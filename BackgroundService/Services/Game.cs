@@ -2,6 +2,7 @@
 using BackgroundService.Hubs;
 using BackgroundService.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using SuperChance.DTOs;
@@ -12,6 +13,7 @@ namespace BackgroundService.Services
     {
         public int Score { get; set; } = 0;
         // TODO: Ajouter une propriété pour le multiplier
+        public int multiplier { get; set; } = 1;
     }
 
     public class Game : Microsoft.Extensions.Hosting.BackgroundService
@@ -45,13 +47,19 @@ namespace BackgroundService.Services
         {
             UserData userData = _data[userId];
             // TODO: Ajouter la valeur du muliplier au lieu d'ajouter 1
-            userData.Score += 1;
+            userData.Score += userData.multiplier;
         }
 
         // TODO: Ajouter une méthode pour acheter un multiplier. Le coût est le prix de base * le multiplier actuel
         // Les prix sont donc de 10, 20, 40, 80, 160 (Si le prix de base est 10)
         // Réduire le score du coût du multiplier
         // Doubler le multiplier du joueur
+        public async Task AcheterUnMultiplier(string userId)
+        {
+            UserData userData = _data[userId];
+            var price = MULTIPLIER_BASE_PRICE * userData.multiplier;
+            userData.multiplier *= 2;
+        }
 
         public async Task EndRound(CancellationToken stoppingToken)
         {
@@ -76,6 +84,7 @@ namespace BackgroundService.Services
             foreach (var key in _data.Keys)
             {
                 // TODO: On remet le multiplier à 1!
+                _data[key].multiplier = 1;
                 _data[key].Score = 0;
             }
 
@@ -98,6 +107,15 @@ namespace BackgroundService.Services
 
                 // TODO: Mettre à jour et sauvegarder le nbWinds des joueurs
 
+                List<Player> joueurs = await backgroundServiceContext.Player.Where(u => winners.Contains(u.UserId)).ToListAsync();
+
+                foreach (var j in joueurs)
+                {
+                    j.NbWins++;
+                }
+                await backgroundServiceContext.SaveChangesAsync();
+
+
                 List<IdentityUser> users = await backgroundServiceContext.Users.Where(u => winners.Contains(u.Id)).ToListAsync();
 
                 RoundResult roundResult = new RoundResult()
@@ -106,6 +124,7 @@ namespace BackgroundService.Services
                     NbClicks = biggestValue
                 };
                 await _gameHub.Clients.All.SendAsync("EndRound", roundResult, stoppingToken);
+                
             }
         }
 
