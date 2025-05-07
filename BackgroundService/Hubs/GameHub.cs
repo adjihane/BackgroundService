@@ -46,5 +46,11 @@ namespace BackgroundService.Hubs
         }
 
         // Ajouter une méthode pour pouvoir acheter un multiplier
+
+        public void BuyMultiplier()
+        {
+            Player player = _backgroundServiceContext.Player.Where(p => p.UserId == Context.UserIdentifier!).Single();
+            _game.AcheterUnMultiplier(player.UserId);
+        }
     }
 }
